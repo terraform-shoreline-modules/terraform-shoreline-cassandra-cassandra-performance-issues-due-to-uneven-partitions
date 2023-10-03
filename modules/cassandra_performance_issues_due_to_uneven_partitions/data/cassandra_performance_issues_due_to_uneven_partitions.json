@@ -1,0 +1,130 @@
+{
+  "name": "cassandra_performance_issues_due_to_uneven_partitions",
+  "description": "This incident type pertains to identifying uneven partitions in a Cassandra database, which can cause performance issues related to read/write operations and query execution. Cassandra is a distributed database that stores data across multiple nodes, and partitions are used to distribute the data evenly among the nodes. However, if the partition sizes are uneven, some nodes may become overloaded while others remain underutilized, leading to performance bottlenecks. Identifying these uneven partitions is crucial in ensuring optimal performance of the Cassandra database.",
+  "params": [
+    {
+      "name": "PATH_TO_NODETOOL_DIR",
+      "value": ""
+    },
+    {
+      "name": "PATH_TO_CASSANDRA_DIR",
+      "value": ""
+    },
+    {
+      "name": "KEYSPACE",
+      "value": ""
+    },
+    {
+      "name": "CASSANDRA_NODE",
+      "value": ""
+    },
+    {
+      "name": "TABLE",
+      "value": ""
+    },
+    {
+      "name": "HOST_NAME",
+      "value": ""
+    },
+    {
+      "name": "K8S_CLUSTER_NAME",
+      "value": ""
+    },
+    {
+      "name": "NAMESPACE",
+      "value": ""
+    }
+  ],
+  "cells": [
+    {
+      "name": "cell_1",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Cassandra Performance Issues Due to Uneven Partitions\nThis incident type pertains to identifying uneven partitions in a Cassandra database, which can cause performance issues related to read/write operations and query execution. Cassandra is a distributed database that stores data across multiple nodes, and partitions are used to distribute the data evenly among the nodes. However, if the partition sizes are uneven, some nodes may become overloaded while others remain underutilized, leading to performance bottlenecks. Identifying these uneven partitions is crucial in ensuring optimal performance of the Cassandra database."
+    },
+    {
+      "name": "cell_2",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Connect to Cassandra cluster"
+    },
+    {
+      "name": "cell_3",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `cqlsh ${CASSANDRA_NODE}`"
+    },
+    {
+      "name": "cell_4",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check if nodetool is installed"
+    },
+    {
+      "name": "cell_5",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `nodetool status`"
+    },
+    {
+      "name": "cell_6",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check the token ranges for each node"
+    },
+    {
+      "name": "cell_7",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `nodetool ring`"
+    },
+    {
+      "name": "cell_8",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Identify the highest and lowest token values"
+    },
+    {
+      "name": "cell_9",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `nodetool ring | awk '{print $NF, $8}' | sort | awk 'NR==1{print \"Lowest Token:\", $1}; END{print \"Highest Token:\", $1}'`"
+    },
+    {
+      "name": "cell_10",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Check the size of each partition"
+    },
+    {
+      "name": "cell_11",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `nodetool cfstats ${KEYSPACE}.${TABLE} | grep \"Partition Size\"`"
+    },
+    {
+      "name": "cell_12",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Identify the largest and smallest partitions"
+    },
+    {
+      "name": "cell_13",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "(host | host_name=$HOST_NAME) union (pod | k8s_cluster_name=$K8S_CLUSTER_NAME | namespace=$NAMESPACE) | `nodetool cfstats ${KEYSPACE}.${TABLE} | grep \"Partition Size\" | awk '{print $3, $4}' | sort -k2 -n | awk 'NR==1{print \"Smallest Partition:\", $1, $2}; END{print \"Largest Partition:\", $1, $2}'`"
+    },
+    {
+      "name": "cell_14",
+      "type": "MARKDOWN",
+      "enabled": true,
+      "content": "## Rebalance the partitions: One way to remediate this incident is to rebalance the partitions in the Cassandra database. This involves redistributing the data across the nodes in a way that ensures even partition sizes. This can be done by running the nodetool repair command or by using a third-party tool such as Cassandra Reaper."
+    },
+    {
+      "name": "cell_15",
+      "type": "OP_LANG",
+      "enabled": true,
+      "content": "host | host_name=$HOST_NAME | invoke_cassandra_repair($PATH_TO_NODETOOL_DIR, $PATH_TO_CASSANDRA_DIR)"
+    }
+  ]
+}
